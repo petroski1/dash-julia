@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minhas Finanças</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <h1>Minhas Finanças</h1>
+    </div>
+    <div class="month-nav">
+      <button class="icon-btn" id="prevMonth" aria-label="Mês anterior">‹</button>
+      <span id="monthLabel" class="month-label"></span>
+      <button class="icon-btn" id="nextMonth" aria-label="Próximo mês">›</button>
+    </div>
+    <div class="top-actions">
+      <button class="btn ghost" id="openSettings">⚙ Configurações</button>
+      <button class="btn primary" id="openNew">+ Nova transação</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="filters" id="personFilter" role="tablist" aria-label="Filtrar por pessoa"></div>
+
+    <section id="emptyState" class="card empty" hidden>
+      <h2>Vamos começar 🌱</h2>
+      <p>Cadastre suas entradas (salário, pix recebido…) e saídas (contas, compras, cartão).
+        Cada lançamento diz <strong>de quem é</strong>, então dá pra separar o que é seu, do seu pai e de quem mais você quiser.</p>
+      <div class="row gap">
+        <button class="btn primary" id="emptyNew">+ Primeira transação</button>
+        <button class="btn ghost" id="loadDemo">Ver com dados de exemplo</button>
+      </div>
+    </section>
+
+    <section class="kpis">
+      <div class="kpi">
+        <span class="kpi-label"><i class="dot in"></i>Entrou</span>
+        <strong class="kpi-value" id="kpiIn">R$ 0,00</strong>
+        <span class="kpi-sub" id="kpiInSub"></span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label"><i class="dot out"></i>Saiu</span>
+        <strong class="kpi-value" id="kpiOut">R$ 0,00</strong>
+        <span class="kpi-sub" id="kpiOutSub"></span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Sobrou no mês</span>
+        <strong class="kpi-value" id="kpiBal">R$ 0,00</strong>
+        <span class="kpi-sub" id="kpiBalSub"></span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">💳 Fatura do cartão</span>
+        <strong class="kpi-value" id="kpiCard">R$ 0,00</strong>
+        <span class="kpi-sub" id="kpiCardSub"></span>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <div class="card">
+        <div class="card-head">
+          <h2>Para onde está indo</h2>
+          <span class="muted small">saídas do mês por categoria</span>
+        </div>
+        <div id="catChart" class="hbars"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>De quem é</h2>
+          <span class="muted small">entradas e saídas por pessoa</span>
+        </div>
+        <div id="peopleTable"></div>
+        <div id="peopleBar" class="stackbar" aria-hidden="true"></div>
+        <div id="peopleLegend" class="legend"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Entradas × saídas</h2>
+        <div class="legend inline">
+          <span><i class="dot in"></i>Entradas</span>
+          <span><i class="dot out"></i>Saídas</span>
+        </div>
+      </div>
+      <div id="trendChart" class="trend"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>💳 Cartão de crédito</h2>
+        <span class="muted small">parcelas caem na fatura do mês em que vencem</span>
+      </div>
+      <div id="cardsSummary" class="cards-summary"></div>
+
+      <div class="grid two inner">
+        <div>
+          <h3>Próximas faturas</h3>
+          <div id="nextBills" class="trend small-trend"></div>
+        </div>
+        <div>
+          <h3>Compras parceladas em andamento</h3>
+          <div id="installments" class="inst-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Lançamentos do mês</h2>
+        <div class="row gap wrap-row">
+          <div class="seg" id="typeFilter">
+            <button data-v="all" class="on">Tudo</button>
+            <button data-v="entrada">Entradas</button>
+            <button data-v="saida">Saídas</button>
+          </div>
+          <input type="search" id="search" placeholder="Buscar…" class="input slim">
+        </div>
+      </div>
+      <div id="txList" class="tx-list"></div>
+    </section>
+
+    <footer class="foot muted small">
+      Os dados ficam salvos neste navegador. Faça um backup em <em>Configurações → Exportar</em> de vez em quando.
+    </footer>
+  </main>
+
+  <div id="tooltip" class="tooltip" hidden></div>
+
+  <!-- Nova / editar transação -->
+  <dialog id="txDialog" class="dialog">
+    <form method="dialog" id="txForm">
+      <h2 id="txTitle">Nova transação</h2>
+
+      <div class="seg big" id="txType">
+        <button type="button" data-v="saida" class="on">↓ Saída</button>
+        <button type="button" data-v="entrada">↑ Entrada</button>
+      </div>
+
+      <label class="field">
+        <span>Descrição</span>
+        <input class="input" name="desc" required placeholder="Ex.: Mercado, Salário, Tênis…">
+      </label>
+
+      <div class="row gap">
+        <label class="field grow">
+          <span id="amountLabel">Valor (R$)</span>
+          <input class="input" name="amount" required inputmode="decimal" placeholder="0,00">
+        </label>
+        <label class="field grow">
+          <span>Data</span>
+          <input class="input" type="date" name="date" required>
+        </label>
+      </div>
+
+      <div class="field">
+        <span>De quem é?</span>
+        <div class="chips" id="txPerson"></div>
+      </div>
+
+      <div class="row gap">
+        <label class="field grow">
+          <span>Categoria</span>
+          <select class="input" name="category"></select>
+        </label>
+        <label class="field grow" id="methodField">
+          <span>Forma de pagamento</span>
+          <select class="input" name="method">
+            <option value="pix">Pix</option>
+            <option value="debito">Débito</option>
+            <option value="credito">Cartão de crédito</option>
+            <option value="dinheiro">Dinheiro</option>
+            <option value="boleto">Boleto</option>
+            <option value="transferencia">Transferência</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="creditFields" class="credit-box" hidden>
+        <div class="row gap">
+          <label class="field grow">
+            <span>Qual cartão</span>
+            <select class="input" name="cardId"></select>
+          </label>
+          <label class="field grow">
+            <span>Parcelas</span>
+            <select class="input" name="installments"></select>
+          </label>
+        </div>
+        <label class="check">
+          <input type="checkbox" name="amountIsInstallment">
+          <span>O valor que digitei é o de <strong>cada parcela</strong> (não o total)</span>
+        </label>
+        <p class="muted small" id="creditHint"></p>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" name="recurring">
+        <span>Repete todo mês (salário, aluguel, assinatura…)</span>
+      </label>
+
+      <div class="row gap end dialog-actions">
+        <button type="button" class="btn danger ghost" id="txDelete" hidden>Excluir</button>
+        <button type="button" class="btn ghost" id="txStop" hidden>Parar de repetir</button>
+        <span class="grow"></span>
+        <button type="button" class="btn ghost" data-close>Cancelar</button>
+        <button type="submit" class="btn primary">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Configurações -->
+  <dialog id="settingsDialog" class="dialog wide">
+    <div class="dialog-body">
+      <div class="row between">
+        <h2>Configurações</h2>
+        <button class="icon-btn" data-close aria-label="Fechar">✕</button>
+      </div>
+
+      <h3>Pessoas</h3>
+      <p class="muted small">Quem pode ser dono de um lançamento.</p>
+      <div id="peopleEdit" class="edit-list"></div>
+      <button class="btn ghost small-btn" id="addPerson">+ Pessoa</button>
+
+      <h3>Cartões de crédito</h3>
+      <p class="muted small">O dia de fechamento define em qual fatura cada compra entra.</p>
+      <div id="cardsEdit" class="edit-list"></div>
+      <button class="btn ghost small-btn" id="addCard">+ Cartão</button>
+
+      <h3>Categorias</h3>
+      <div class="grid two">
+        <label class="field">
+          <span>Saídas (uma por linha)</span>
+          <textarea class="input" id="catOut" rows="8"></textarea>
+        </label>
+        <label class="field">
+          <span>Entradas (uma por linha)</span>
+          <textarea class="input" id="catIn" rows="8"></textarea>
+        </label>
+      </div>
+
+      <h3>Backup</h3>
+      <div class="row gap wrap-row">
+        <button class="btn ghost" id="exportData">⬇ Exportar dados</button>
+        <label class="btn ghost">⬆ Importar dados<input type="file" id="importData" accept="application/json" hidden></label>
+        <button class="btn danger ghost" id="resetData">Apagar tudo</button>
+      </div>
+
+      <div class="row end dialog-actions">
+        <button class="btn primary" id="saveSettings">Salvar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
