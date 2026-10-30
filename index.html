@@ -17,6 +17,7 @@
       <span id="monthLabel" class="month-label"></span>
       <button class="icon-btn" id="nextMonth" aria-label="Próximo mês">›</button>
     </div>
+    <span id="syncStatus" class="sync-pill" hidden></span>
     <div class="top-actions">
       <button class="btn ghost" id="openSettings">⚙ Configurações</button>
       <button class="btn primary" id="openNew">+ Nova transação</button>
@@ -242,6 +243,28 @@
         </label>
       </div>
 
+      <h3>Sincronização na nuvem (Supabase)</h3>
+      <p class="muted small" id="cloudInfo"></p>
+      <div id="membersBox" hidden>
+        <p class="muted small">Quem tem acesso (e-mail usado para entrar):</p>
+        <div id="membersList" class="edit-list"></div>
+        <div class="row gap">
+          <input class="input grow" type="email" id="newMember" placeholder="email@exemplo.com">
+          <button class="btn ghost small-btn" id="addMember">+ Dar acesso</button>
+        </div>
+      </div>
+      <details class="cloud-config">
+        <summary class="small">Dados de conexão</summary>
+        <div class="row gap wrap-row" style="margin-top:8px">
+          <input class="input grow" id="cfgUrl" placeholder="https://xxxx.supabase.co">
+          <input class="input grow" id="cfgKey" placeholder="Chave publishable / anon">
+          <button class="btn ghost small-btn" id="saveCfg">Salvar e recarregar</button>
+        </div>
+      </details>
+      <div class="row gap wrap-row" style="margin-top:8px">
+        <button class="btn ghost small-btn" id="signOut" hidden>Sair da conta</button>
+      </div>
+
       <h3>Backup</h3>
       <div class="row gap wrap-row">
         <button class="btn ghost" id="exportData">⬇ Exportar dados</button>
@@ -255,6 +278,25 @@
     </div>
   </dialog>
 
+  <!-- Login (só aparece com o Supabase configurado) -->
+  <section id="authScreen" class="auth" hidden>
+    <form id="authForm" class="auth-card">
+      <div class="brand"><span class="brand-dot"></span><h1>Minhas Finanças</h1></div>
+      <p class="muted small">Entre para ver e salvar os dados na nuvem. Tudo atualiza sozinho em todos os aparelhos.</p>
+      <label class="field"><span>E-mail</span><input class="input" type="email" name="email" required autocomplete="email"></label>
+      <label class="field"><span>Senha</span><input class="input" type="password" name="password" required minlength="6" autocomplete="current-password"></label>
+      <div class="row gap">
+        <button class="btn primary grow" type="submit" value="login">Entrar</button>
+        <button class="btn ghost grow" type="submit" value="signup">Criar conta</button>
+      </div>
+      <p id="authMsg" class="auth-msg small"></p>
+      <button type="button" class="link-btn small" id="authLocal">Usar só neste navegador, sem sincronizar</button>
+    </form>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
+  <script src="sync.js"></script>
 </body>
 </html>

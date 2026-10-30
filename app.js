@@ -41,7 +41,9 @@ function load() {
   return DEFAULT_STATE();
 }
 
+// Com a nuvem ativa, o navegador não guarda cópia própria (o Supabase é a fonte).
 function save() {
+  if (typeof cloud !== 'undefined' && cloud.active) return;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* ignora */ }
 }
 
@@ -595,15 +597,18 @@ txForm.addEventListener('submit', e => {
     installments,
     recurring,
   };
+  let saved = editing;
   if (editing) {
     Object.assign(editing, data);
     if (!recurring) delete editing.endMonth;
   } else {
-    state.tx.push({ id: uid(), ...data });
+    saved = { id: uid(), ...data };
+    state.tx.push(saved);
   }
   save();
   txDialog.close();
   render();
+  cloud.putTx(saved);
 });
 
 txForm.amount.addEventListener('input', () => { txForm.amount.setCustomValidity(''); updateCreditFields(); });
@@ -617,8 +622,10 @@ $('#txDelete').onclick = () => {
     ? `Excluir "${editing.desc}" e todas as ${editing.installments} parcelas?`
     : `Excluir "${editing.desc}"?`;
   if (!confirm(msg)) return;
+  const id = editing.id;
   state.tx = state.tx.filter(t => t !== editing);
   save(); txDialog.close(); render();
+  cloud.delTx(id);
 };
 
 $('#txStop').onclick = () => {
@@ -627,6 +634,7 @@ $('#txStop').onclick = () => {
   if (!confirm(`Parar de repetir "${editing.desc}"? Fica até ${monthName(last)} e some a partir de ${monthName(ui.month)}.`)) return;
   editing.endMonth = last;
   save(); txDialog.close(); render();
+  cloud.putTx(editing);
 };
 
 /* ------------------------------------------------------------------ *
@@ -641,8 +649,41 @@ function openSettings() {
   $('#catOut').value = state.categories.saida.join('\n');
   $('#catIn').value = state.categories.entrada.join('\n');
   renderSettingsLists();
+  renderCloudSettings();
   settingsDialog.showModal();
 }
+
+async function renderCloudSettings() {
+  const cfg = cloud.config();
+  $('#cfgUrl').value = cfg.url;
+  $('#cfgKey').value = cfg.key;
+  $('#signOut').hidden = !cloud.user;
+  $('#membersBox').hidden = !cloud.active;
+  $('#cloudInfo').textContent = cloud.active
+    ? `Conectado como ${cloud.user.email}. Tudo que você lança aparece na hora nos outros aparelhos.`
+    : cloud.configured()
+      ? 'Supabase configurado, mas você não entrou na conta. Os dados estão só neste navegador.'
+      : 'Sem Supabase configurado: os dados ficam só neste navegador.';
+  if (!cloud.active) return;
+  const list = await cloud.members();
+  $('#membersList').innerHTML = list.map(e => `
+    <div class="member-row"><span>${esc(e)}${e === cloud.user.email.toLowerCase() ? ' <span class="muted">(você)</span>' : ''}</span>
+      <button class="icon-btn" data-email="${esc(e)}" title="Remover acesso">✕</button></div>`).join('');
+  $('#membersList').querySelectorAll('[data-email]').forEach(b => b.onclick = async () => {
+    if (list.length === 1) { alert('Precisa ficar pelo menos uma pessoa com acesso.'); return; }
+    if (!confirm(`Tirar o acesso de ${b.dataset.email}?`)) return;
+    await cloud.removeMember(b.dataset.email);
+    renderCloudSettings();
+  });
+}
+
+$('#addMember').onclick = async () => {
+  const email = $('#newMember').value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { alert('Digite um e-mail válido.'); return; }
+  if (await cloud.addMember(email)) { $('#newMember').value = ''; renderCloudSettings(); }
+};
+$('#saveCfg').onclick = () => { cloud.saveConfig($('#cfgUrl').value, $('#cfgKey').value); location.reload(); };
+$('#signOut').onclick = () => cloud.signOut();
 
 function renderSettingsLists() {
   $('#peopleEdit').innerHTML = draft.people.map((p, i) => `
@@ -703,6 +744,7 @@ $('#saveSettings').onclick = () => {
     state.categories[type] = [...new Set([...(list.length ? list : ['Outros']), ...used])];
   }
   save(); settingsDialog.close(); render();
+  cloud.saveSettings();
 };
 
 $('#exportData').onclick = () => {
@@ -723,6 +765,7 @@ $('#importData').onchange = async e => {
     if (!confirm(`Importar ${data.tx.length} lançamentos? Isso substitui os dados atuais.`)) return;
     state = Object.assign(DEFAULT_STATE(), data);
     save(); settingsDialog.close(); render();
+    cloud.replaceAll();
   } catch (err) {
     alert('Não consegui ler esse arquivo. Use um backup exportado por aqui.');
   } finally { e.target.value = ''; }
@@ -732,6 +775,7 @@ $('#resetData').onclick = () => {
   if (!confirm('Apagar TODOS os lançamentos e configurações? Não dá pra desfazer.')) return;
   state = DEFAULT_STATE();
   save(); settingsDialog.close(); render();
+  cloud.replaceAll();
 };
 
 /* ------------------------------------------------------------------ *
@@ -769,6 +813,7 @@ function loadDemo() {
   add('entrada', 'Pix da Maria (rachou o jantar)', 85, `${m(0)}-03`, 'Pix recebido', me, 'pix');
   state = s;
   save(); render();
+  cloud.replaceAll();
 }
 
 /* ------------------------------------------------------------------ *
@@ -792,3 +837,4 @@ let resizeTimer;
 addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
 
 render();
+// cloud.start() é chamado no fim de sync.js

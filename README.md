@@ -17,9 +17,17 @@ Dashboard financeiro pessoal, claro e simples, que roda direto no navegador (sem
   - A compra cai na fatura certa de acordo com o dia de fechamento e vencimento do cartão.
 - **Lançamentos fixos** (salário, aluguel, assinaturas) com "Repete todo mês".
 
-## Dados
+## Dados (Supabase)
 
-Tudo fica salvo no próprio navegador (localStorage). Use **Configurações → Exportar dados** para fazer backup
-e **Importar dados** para levar para outro computador/celular.
+Os dados ficam no **Supabase** e atualizam sozinhos, na hora, em todos os aparelhos (celular, computador…).
+
+- Entre com e-mail e senha (botão **Criar conta** na primeira vez).
+- O **primeiro e-mail** que entrar vira dono dos dados. Para liberar outra pessoa:
+  **Configurações → Quem tem acesso → Dar acesso**, e ela cria a conta com aquele e-mail.
+- Tabelas e regras de segurança: `supabase/schema.sql` (cada um só vê os dados se o e-mail estiver liberado).
+- Conexão: `config.js` (URL do projeto + chave *publishable*, que pode ser pública).
+
+Sem Supabase configurado (ou clicando em "Usar só neste navegador"), o app funciona só com o navegador.
+O backup em **Configurações → Exportar dados** continua disponível.
 
 Em **Configurações** dá pra mudar os nomes das pessoas, cadastrar cartões (fechamento, vencimento, limite) e editar as categorias.
